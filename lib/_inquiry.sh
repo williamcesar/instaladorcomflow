@@ -203,12 +203,12 @@ inquiry_options() {
   print_banner
   printf "${WHITE} 💻 Bem vindo(a) ao Instalador do Waboot, selecione abaixo a proxima ação!${GRAY_LIGHT}"
   printf "\n\n"
-  printf "   [0] Instalar Equipechat\n\n"
-  printf "   [1] Atualizar Equipechat\n\n"
-  printf "   [2] Deletar Equipechat\n\n"
-  printf "   [3] Bloquear Equipechat\n\n"
-  printf "   [4] Desbloquear Equipechat\n\n"
-  printf "   [5] Alter. dominio Equipechat\n\n"
+  printf "   [0] Instalar o sistema WABOOT\n\n"
+  printf "   [1] Atualizar o sistema WABOOT\n\n"
+  printf "   [2] Deletar o sistema WABOOT\n\n"
+  printf "   [3] Bloquear o sistema WABOOT\n\n"
+  printf "   [4] Desbloquear o sistema WABOOT\n\n"
+  printf "   [5] Alter. dominio do sistema WABOOT\n\n"
   printf "\n"
   read -p "> " option
 
