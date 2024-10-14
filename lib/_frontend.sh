@@ -15,8 +15,9 @@ frontend_node_dependencies() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/${instancia_add}/frontend
-  npm install --force
+  cd /home/deploy/izing.io/frontend
+  npm install --force --silent
+  npm i @quasar/cli
 EOF
 
   sleep 2
@@ -35,35 +36,10 @@ frontend_node_build() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/${instancia_add}/frontend
-  NODE_OPTIONS=--openssl-legacy-provider npm run build
-EOF
-
-  sleep 2
-}
-
-#######################################
-# updates frontend code
-# Arguments:
-#   None
-#######################################
-frontend_update() {
-  print_banner
-  printf "${WHITE} 💻 Atualizando o frontend...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - deploy <<EOF
-  cd /home/deploy/${empresa_atualizar}
-  pm2 stop ${empresa_atualizar}-frontend
-  git pull
-  cd /home/deploy/${empresa_atualizar}/frontend
-  npm install
-  rm -rf build
-  NODE_OPTIONS=--openssl-legacy-provider npm run build
-  pm2 start ${empresa_atualizar}-frontend
-  pm2 save
+  cd /home/deploy/izing.io/frontend
+  npx update-browserslist-db@latest --yes
+  export NODE_OPTIONS=--openssl-legacy-provider
+  npx quasar build -P -m pwa
 EOF
 
   sleep 2
@@ -88,26 +64,8 @@ frontend_set_env() {
   backend_url=https://$backend_url
 
 sudo su - deploy << EOF
-  cat <<[-]EOF > /home/deploy/${instancia_add}/frontend/.env
-REACT_APP_BACKEND_URL=${backend_url}
-REACT_APP_HOURS_CLOSE_TICKETS_AUTO = 24
-[-]EOF
-EOF
-
-  sleep 2
-
-sudo su - deploy << EOF
-  cat <<[-]EOF > /home/deploy/${instancia_add}/frontend/server.js
-//simple express server to run frontend production build;
-const express = require("express");
-const path = require("path");
-const app = express();
-app.use(express.static(path.join(__dirname, "build")));
-app.get("/*", function (req, res) {
-	res.sendFile(path.join(__dirname, "build", "index.html"));
-});
-app.listen(${frontend_port});
-
+  cat <<[-]EOF > /home/deploy/izing.io/frontend/.env
+URL_API=${backend_url}
 [-]EOF
 EOF
 
@@ -115,29 +73,24 @@ EOF
 }
 
 #######################################
-# starts pm2 for frontend
+# starts frontend using pm2 in 
+# production mode.
 # Arguments:
 #   None
 #######################################
 frontend_start_pm2() {
   print_banner
-  printf "${WHITE} 💻 Iniciando pm2 (frontend)...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Iniciando pm2 (backend)...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
-  sudo su - root <<EOF
-  cd /home/deploy/${instancia_add}/frontend
-  pm2 start server.js --name ${instancia_add}-frontend
-  pm2 save --force
+  sudo su - deploy <<EOF
+  cd /home/deploy/izing.io/frontend
+  pm2 start server.js --name izing-frontend
+  pm2 save
 EOF
 
- sleep 2
-  
-  sudo su - root <<EOF
-   pm2 startup
-  sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u deploy --hp /home/deploy
-EOF
   sleep 2
 }
 
@@ -157,12 +110,12 @@ frontend_nginx_setup() {
 
 sudo su - root << EOF
 
-cat > /etc/nginx/sites-available/${instancia_add}-frontend << 'END'
+cat > /etc/nginx/sites-available/izing-frontend << 'END'
 server {
   server_name $frontend_hostname;
-
-  location / {
-    proxy_pass http://127.0.0.1:${frontend_port};
+  
+    location / {
+    proxy_pass http://127.0.0.1:4444;
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -173,9 +126,11 @@ server {
     proxy_cache_bypass \$http_upgrade;
   }
 }
+
+
 END
 
-ln -s /etc/nginx/sites-available/${instancia_add}-frontend /etc/nginx/sites-enabled
+ln -s /etc/nginx/sites-available/izing-frontend /etc/nginx/sites-enabled
 EOF
 
   sleep 2

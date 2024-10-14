@@ -1,244 +1,121 @@
 #!/bin/bash
 
- get_mysql_root_password() {
-  
-   print_banner
-   printf "${WHITE} 💻 Insira senha para o usuario Deploy e Banco de Dados (Não utilizar caracteres especiais):${GRAY_LIGHT}"
-   printf "\n\n"
-   read -p "> " mysql_root_password
- }
-
-get_link_git() {
-  
- print_banner
- printf "${WHITE} 💻 Insira o link do Github da sua instalação que deseja instalar:${GRAY_LIGHT}"
- printf "\n\n"
-  read -p "> " link_git
- }
-
-get_instancia_add() {
-  
-  print_banner
-  printf "${WHITE} 💻 Informe um nome para a Instancia/Empresa que será instalada (Não utilizar espaços ou caracteres especiais, Utilizar Letras minusculas; ):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " instancia_add
-}
-
-get_max_whats() {
-  
-  print_banner
-  printf "${WHITE} 💻 Informe a Qtde de Conexões/Whats que a ${instancia_add} poderá cadastrar:${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " max_whats
-}
-
-get_max_user() {
-  
-  print_banner
-  printf "${WHITE} 💻 Informe a Qtde de Usuarios/Atendentes que a ${instancia_add} poderá cadastrar:${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " max_user
-}
-
 get_frontend_url() {
-  
   print_banner
-  printf "${WHITE} 💻 Digite o domínio do FRONTEND/PAINEL para a ${instancia_add}:${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Digite o domínio da interface web (Frontend):${GRAY_LIGHT}"
   printf "\n\n"
   read -p "> " frontend_url
 }
 
 get_backend_url() {
-  
   print_banner
-  printf "${WHITE} 💻 Digite o domínio do BACKEND/API para a ${instancia_add}:${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Digite o domínio da sua API (Backend):${GRAY_LIGHT}"
   printf "\n\n"
   read -p "> " backend_url
 }
 
-get_frontend_port() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite a porta do FRONTEND para a ${instancia_add}; Ex: 3000 A 3999 ${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " frontend_port
-}
-
-
-get_backend_port() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite a porta do BACKEND para esta instancia; Ex: 4000 A 4999 ${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " backend_port
-}
-
-get_redis_port() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite a porta do REDIS/AGENDAMENTO MSG para a ${instancia_add}; Ex: 5000 A 5999 ${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " redis_port
-}
-
-get_empresa_delete() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o nome da Instancia/Empresa que será Deletada (Digite o mesmo nome de quando instalou):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " empresa_delete
-}
-
-get_empresa_atualizar() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o nome da Instancia/Empresa que deseja Atualizar (Digite o mesmo nome de quando instalou):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " empresa_atualizar
-}
-
-get_empresa_bloquear() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o nome da Instancia/Empresa que deseja Bloquear (Digite o mesmo nome de quando instalou):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " empresa_bloquear
-}
-
-get_empresa_desbloquear() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o nome da Instancia/Empresa que deseja Desbloquear (Digite o mesmo nome de quando instalou):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " empresa_desbloquear
-}
-
-get_empresa_dominio() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o nome da Instancia/Empresa que deseja Alterar os Dominios (Atenção para alterar os dominios precisa digitar os 2, mesmo que vá alterar apenas 1):${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " empresa_dominio
-}
-
-get_alter_frontend_url() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o NOVO domínio do FRONTEND/PAINEL para a ${empresa_dominio}:${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " alter_frontend_url
-}
-
-get_alter_backend_url() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite o NOVO domínio do BACKEND/API para a ${empresa_dominio}:${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " alter_backend_url
-}
-
-get_alter_frontend_port() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite a porta do FRONTEND da Instancia/Empresa ${empresa_dominio}; A porta deve ser o mesma informada durante a instalação ${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " alter_frontend_port
-}
-
-
-get_alter_backend_port() {
-  
-  print_banner
-  printf "${WHITE} 💻 Digite a porta do BACKEND da Instancia/Empresa ${empresa_dominio}; A porta deve ser o mesma informada durante a instalação ${GRAY_LIGHT}"
-  printf "\n\n"
-  read -p "> " alter_backend_port
-}
-
-
 get_urls() {
-  get_mysql_root_password
-  get_link_git
-  get_instancia_add
-  get_max_whats
-  get_max_user
   get_frontend_url
   get_backend_url
-  get_frontend_port
-  get_backend_port
-  get_redis_port
 }
 
 software_update() {
-  get_empresa_atualizar
-  frontend_update
-  backend_update
+  system_pm2_stop
+  system_update_izing
+  frontend_node_dependencies
+  frontend_node_build
+  backend_node_dependencies
+  backend_db_migrate
+  backend_db_seed
+  system_pm2_start
+  script_adicionais
+  system_success2
 }
 
-software_delete() {
-  get_empresa_delete
-  deletar_tudo
+ativar_firewall () {
+  iniciar_firewall
 }
 
-software_bloquear() {
-  get_empresa_bloquear
-  configurar_bloqueio
+desativar_firewall () {
+  parar_firewall
 }
 
-software_desbloquear() {
-  get_empresa_desbloquear
-  configurar_desbloqueio
-}
-
-software_dominio() {
-  get_empresa_dominio
-  get_alter_frontend_url
-  get_alter_backend_url
-  get_alter_frontend_port
-  get_alter_backend_port
-  configurar_dominio
+erro_qrcode () {
+  system_pm2_stop
+  backend_limpa_wwebjs_auth
+  system_pm2_start
+  system_successqrcode
 }
 
 inquiry_options() {
-  
+
+  rm versao.json
+  wget -q https://coresistemas.com/versao-6090.json versao.json
   print_banner
-  printf "${WHITE} 💻 Bem vindo(a) ao Gerenciador, Selecione abaixo a proxima ação!${GRAY_LIGHT}"
+  
+# Verifica se o arquivo package.json existe
+if [ -f "/home/deploy/izing.io/frontend/package.json" ]; then
+  # Obtém a versão do package.json
+  PACKAGE_VERSION=$(cat /home/deploy/izing.io/frontend/package.json | grep -oE '"version": "[0-9.]+"' | grep -oE '[0-9.]+')
+
+  # Obtém a versão do arquivo de texto remoto
+  REMOTE_VERSION=$(cat versao.json | grep -oE '"version": "[0-9.]+"' | grep -oE '[0-9.]+')
+
+  # Compara as versões
+  if [ "$PACKAGE_VERSION" == "$REMOTE_VERSION" ]; then
+    echo -e "\033[0;32m✅ Versão atualizada.\033[0m"
+  else
+    echo -e "\033[0;31m❌ Versão desatualizada. Execute a atualização (opção 2) após fazer um snapshot da VPS.\033[0m"
+  fi
+else
+  echo -e "\033[0;31m❌ Kmenu ainda não instalado.\033[0m"
+fi
+
+
+# Verifica se o UFW está ativado
+if ! command -v ufw &> /dev/null; then
+  echo -e "\033[0;31m❌ Servidor inseguro! O firewall está desativado.\033[0m"
+fi
+if sudo ufw status | grep -q "Status: inactive"; then
+  echo -e "\033[0;31m❌ Servidor inseguro! O firewall está desativado.\033[0m"
+fi
   printf "\n\n"
-  printf "   [0] Instalar \n"
-  printf "   [1] Atualizar \n"
-  printf "   [2] Deletar \n"
-  printf "   [3] Bloquear \n"
-  printf "   [4] Desbloquear \n"
-  printf "   [5] Alter. dominio \n"
+  printf "${WHITE} 💻 O que você precisa fazer?${GRAY_LIGHT}"
+  printf "\n\n"
+  printf "   [1] Instalar\n"
+  printf "   [2] Atualizar Kmenu(antes de atualizar faça um Snapshots da VPS\n"
+  printf "   [3] Ativar Firewall\n"
+  printf "   [4] Desativar Firewall\n"
+  printf "   [5] Erro QRCODE - Atenção vai ter conectar conexões novamente\n"
   printf "\n"
   read -p "> " option
 
   case "${option}" in
-    0) get_urls ;;
+    1) get_urls ;;
 
-    1) 
+
+    2) 
       software_update 
       exit
       ;;
 
-    2) 
-      software_delete 
-      exit
-      ;;
+
     3) 
-      software_bloquear 
+      ativar_firewall 
       exit
       ;;
+	  
     4) 
-      software_desbloquear 
+      desativar_firewall 
       exit
       ;;
+	
     5) 
-      software_dominio 
+      erro_qrcode
       exit
-      ;;        
+      ;;
 
     *) exit ;;
   esac
 }
-
 

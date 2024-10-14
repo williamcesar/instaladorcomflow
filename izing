@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git pull
+
 # reset shell colors
 tput init
 
@@ -21,8 +23,6 @@ source "${PROJECT_ROOT}"/lib/manifest.sh
 if [[ ! -e "${PROJECT_ROOT}"/config ]]; then
   cat << EOF > "${PROJECT_ROOT}"/config
 deploy_password=${deploy_password}
-mysql_root_password=${mysql_root_password}
-db_pass=${db_pass}
 EOF
 fi
 
@@ -37,10 +37,14 @@ source "${PROJECT_ROOT}"/config
 inquiry_options
 
 # dependencies related
+verificar_senha
 system_update
+system_set_timezone
 system_node_install
 system_pm2_install
 system_docker_install
+system_puppeteer_dependencies
+instalacao_firewall
 system_snapd_install
 system_nginx_install
 system_certbot_install
@@ -49,11 +53,13 @@ system_certbot_install
 system_create_user
 
 # backend related
-system_git_clone
+system_unzip_izing
+system_set_user_mod
 backend_set_env
-backend_redis_create
+backend_db_create
+backend_chrome_install
 backend_node_dependencies
-backend_node_build
+system_docker_restart
 backend_db_migrate
 backend_db_seed
 backend_start_pm2
@@ -67,6 +73,10 @@ frontend_start_pm2
 frontend_nginx_setup
 
 # network related
+criar_cron
 system_nginx_conf
 system_nginx_restart
 system_certbot_setup
+system_docker_restart
+script_adicionais
+system_success

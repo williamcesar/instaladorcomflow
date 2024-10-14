@@ -15,22 +15,18 @@
 # Arguments:
 #   None
 #######################################
-
 print_banner() {
 
   clear
 
-printf "\n\n"
-printf "${ORANGE}";  
-printf " ██████╗ ██████╗ ███████╗\n";
-printf "██╔════╝ ██╔══██╗██╔════╝\n";
-printf "██║  ███╗██████╔╝███████\n";
-printf "██║   ██║██╔══██╗╚════██\n";
-printf "╚██████╔╝██████╔╝███████║\n";
-printf " ╚═════╝ ╚═════╝ ╚══════╝\n";
-printf "${NC}";
+  printf "\n\n"
 
-
+  printf "${GREEN}";
+  printf "\n";
+  printf "\n";
+  printf "\n";
+  printf "\n";
+  printf "${NC}";
 
   printf "\n"
 }
