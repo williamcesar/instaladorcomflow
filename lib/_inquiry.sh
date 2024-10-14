@@ -201,14 +201,14 @@ software_dominio() {
 inquiry_options() {
   
   print_banner
-  printf "${WHITE} 💻 Bem vindo(a) ao Gerenciador Equipechat - Atendimento sem limites, selecione abaixo a proxima ação!${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Bem vindo(a) ao Instalador do Waboot, selecione abaixo a proxima ação!${GRAY_LIGHT}"
   printf "\n\n"
-  printf "   [0] Instalar Equipechat\n"
-  printf "   [1] Atualizar Equipechat\n"
-  printf "   [2] Deletar Equipechat\n"
-  printf "   [3] Bloquear Equipechat\n"
-  printf "   [4] Desbloquear Equipechat\n"
-  printf "   [5] Alter. dominio Equipechat\n"
+  printf "   [0] Instalar Equipechat\n\n"
+  printf "   [1] Atualizar Equipechat\n\n"
+  printf "   [2] Deletar Equipechat\n\n"
+  printf "   [3] Bloquear Equipechat\n\n"
+  printf "   [4] Desbloquear Equipechat\n\n"
+  printf "   [5] Alter. dominio Equipechat\n\n"
   printf "\n"
   read -p "> " option
 
