@@ -1,98 +1,34 @@
 #!/bin/bash
-# 
+#
 # functions for setting up app backend
-
 #######################################
-# creates docker db
+# creates REDIS db using docker
 # Arguments:
 #   None
 #######################################
-backend_db_create() {
+backend_redis_create() {
   print_banner
-  printf "${WHITE} 💻 Criando banco de dados...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Criando Redis & Banco Postgres...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
   usermod -aG docker deploy
-  mkdir -p /data
-  chown -R 999:999 /data
-  docker run --name postgresql \
-                -e POSTGRES_USER=izing \
-                -e POSTGRES_PASSWORD=${pg_pass} \
-				-e TZ="America/Sao_Paulo" \
-                -p 5432:5432 \
-                --restart=always \
-                -v /data:/var/lib/postgresql/data \
-                -d postgres
-  docker exec -u root postgresql bash -c "chown -R postgres:postgres /var/lib/postgresql/data"
-  docker run --name redis-izing \
-                -e TZ="America/Sao_Paulo" \
-                -p 6379:6379 \
-                --restart=always \
-                -d redis:latest redis-server \
-                --appendonly yes \
-                --requirepass "${redis_pass}"
-
-  docker run -d --name rabbitmq \
-                -p 5672:5672 \
-                -p 15672:15672 \
-                --restart=always \
-                --hostname rabbitmq \
-                -e RABBITMQ_DEFAULT_USER=izing \
-                -e RABBITMQ_DEFAULT_PASS=${rabbit_pass} \
-                -v /data:/var/lib/rabbitmq \
-                rabbitmq:3-management-alpine
+  docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
   
-  docker run -d --name portainer \
-                -p 9000:9000 -p 9443:9443 \
-                --restart=always \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                -v portainer_data:/data portainer/portainer-ce
+  sleep 2
+  sudo su - postgres
+  createdb ${instancia_add};
+  psql
+  CREATE USER ${instancia_add} SUPERUSER INHERIT CREATEDB CREATEROLE;
+  ALTER USER ${instancia_add} PASSWORD '${mysql_root_password}';
+  \q
+  exit
 EOF
 
-  sleep 2
-}
+sleep 2
 
-#######################################
-# install_chrome
-# Arguments:
-#   None
-#######################################
-backend_chrome_install() {
-  print_banner
-  printf "${WHITE} 💻 Vamos instalar o Chrome...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-wget --inet4-only -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmour -o /usr/share/keyrings/chrome-keyring.gpg 
-sudo sh -c 'echo "deb [arch=amd64,arm64,ppc64el signed-by=/usr/share/keyrings/chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list'
-sudo apt update 
-sudo apt install -y google-chrome-stable 
-EOF
-
-  sleep 2
-}
-
-backend_limpa_wwebjs_auth() {
-  print_banner
-  printf "${WHITE} 💻 Estamos apagando pasta de conexões...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
-  npm r whatsapp-web.js
-  npm i github:pedroslopez/whatsapp-web.js#webpack-exodus
-  rm .wwebjs_cache -Rf
-  rm .wwebjs_auth -Rf
-EOF
-
-  sleep 2
 }
 
 #######################################
@@ -116,71 +52,39 @@ backend_set_env() {
   frontend_url=$(echo "${frontend_url/https:\/\/}")
   frontend_url=${frontend_url%%/*}
   frontend_url=https://$frontend_url
-  
-  jwt_secret=$(openssl rand -base64 32)
-  jwt_refresh_secret=$(openssl rand -base64 32)
 
 sudo su - deploy << EOF
-  cat <<[-]EOF > /home/deploy/izing.io/backend/.env
+  cat <<[-]EOF > /home/deploy/${instancia_add}/backend/.env
 NODE_ENV=
 BACKEND_URL=${backend_url}
 FRONTEND_URL=${frontend_url}
-ADMIN_DOMAIN=izing.io
-
 PROXY_PORT=443
-PORT=3000
+PORT=${backend_port}
 
-# conexão com o banco de dados
+DB_HOST=localhost
 DB_DIALECT=postgres
+DB_USER=${instancia_add}
+DB_PASS=${mysql_root_password}
+DB_NAME=${instancia_add}
 DB_PORT=5432
-DB_TIMEZONE=-03:00
-POSTGRES_HOST=localhost
-POSTGRES_USER=izing
-POSTGRES_PASSWORD=${pg_pass}
-POSTGRES_DB=postgres
 
-# Chaves para criptografia do token jwt
 JWT_SECRET=${jwt_secret}
 JWT_REFRESH_SECRET=${jwt_refresh_secret}
 
-# Dados de conexão com o REDIS
-IO_REDIS_SERVER=localhost
-IO_REDIS_PASSWORD=${redis_pass}
-IO_REDIS_PORT=6379
-IO_REDIS_DB_SESSION=2
+REDIS_URI=redis://:${mysql_root_password}@127.0.0.1:${redis_port}
+REDIS_OPT_LIMITER_MAX=1
+REGIS_OPT_LIMITER_DURATION=3000
 
-CHROME_BIN=/usr/bin/google-chrome-stable
+USER_LIMIT=${max_user}
+CONNECTIONS_LIMIT=${max_whats}
+CLOSED_SEND_BY_ME=true
 
-# tempo para randomização da mensagem de horário de funcionamento
-MIN_SLEEP_BUSINESS_HOURS=1000
-MAX_SLEEP_BUSINESS_HOURS=2000
+GERENCIANET_SANDBOX=false
+GERENCIANET_CLIENT_ID=sua-id
+GERENCIANET_CLIENT_SECRET=sua_chave_secreta
+GERENCIANET_PIX_CERT=nome_do_certificado
+GERENCIANET_PIX_KEY=chave_pix_gerencianet
 
-# tempo para randomização das mensagens do bot
-MIN_SLEEP_AUTO_REPLY=400
-MAX_SLEEP_AUTO_REPLY=600
-
-# tempo para randomização das mensagens gerais
-MIN_SLEEP_INTERVAL=200
-MAX_SLEEP_INTERVAL=500
-
-# dados do RabbitMQ / Para não utilizar, basta comentar a var AMQP_URL
-RABBITMQ_DEFAULT_USER=izing
-RABBITMQ_DEFAULT_PASS=${rabbit_pass}
-AMQP_URL='amqp://izing:${rabbit_pass}@localhost:5672?connection_attempts=5&retry_delay=5'
-
-# api oficial (integração em desenvolvimento)
-API_URL_360=https://waba-sandbox.360dialog.io
-
-# usado para mosrar opções não disponíveis normalmente.
-ADMIN_DOMAIN=izing.io
-
-# Dados para utilização do canal do facebook
-FACEBOOK_APP_ID=3237415623048660
-FACEBOOK_APP_SECRET_KEY=3266214132b8c98ac59f3e957a5efeaaa13500
-
-# Limitar Uso do Izing Usuario e Conexões
-USER_LIMIT=99
-CONNECTIONS_LIMIT=99
 [-]EOF
 EOF
 
@@ -200,8 +104,8 @@ backend_node_dependencies() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
-  npm install --force --silent
+  cd /home/deploy/${instancia_add}/backend
+  npm install
 EOF
 
   sleep 2
@@ -220,8 +124,39 @@ backend_node_build() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
+  cd /home/deploy/${instancia_add}/backend
+  npm run build
+EOF
 
+  sleep 2
+}
+
+#######################################
+# updates frontend code
+# Arguments:
+#   None
+#######################################
+backend_update() {
+  print_banner
+  printf "${WHITE} 💻 Atualizando o backend...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - deploy <<EOF
+  cd /home/deploy/${empresa_atualizar}
+  pm2 stop ${empresa_atualizar}-backend
+  git pull
+  cd /home/deploy/${empresa_atualizar}/backend
+  npm install
+  npm update -f
+  npm install @types/fs-extra
+  rm -rf dist 
+  npm run build
+  npx sequelize db:migrate
+  npx sequelize db:seed
+  pm2 start ${empresa_atualizar}-backend
+  pm2 save 
 EOF
 
   sleep 2
@@ -240,8 +175,8 @@ backend_db_migrate() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
-  npx sequelize db:migrate > /dev/null
+  cd /home/deploy/${instancia_add}/backend
+  npx sequelize db:migrate
 EOF
 
   sleep 2
@@ -260,8 +195,8 @@ backend_db_seed() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
-  npx sequelize db:seed:all > /dev/null
+  cd /home/deploy/${instancia_add}/backend
+  npx sequelize db:seed:all
 EOF
 
   sleep 2
@@ -281,9 +216,8 @@ backend_start_pm2() {
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/izing.io/backend
-  pm2 start dist/server.js --name izing-backend
-  pm2 save
+  cd /home/deploy/${instancia_add}/backend
+  pm2 start dist/server.js --name ${instancia_add}-backend
 EOF
 
   sleep 2
@@ -304,13 +238,11 @@ backend_nginx_setup() {
   backend_hostname=$(echo "${backend_url/https:\/\/}")
 
 sudo su - root << EOF
-
-cat > /etc/nginx/sites-available/izing-backend << 'END'
+cat > /etc/nginx/sites-available/${instancia_add}-backend << 'END'
 server {
   server_name $backend_hostname;
-  
   location / {
-    proxy_pass http://127.0.0.1:3000;
+    proxy_pass http://127.0.0.1:${backend_port};
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection 'upgrade';
@@ -322,8 +254,7 @@ server {
   }
 }
 END
-
-ln -s /etc/nginx/sites-available/izing-backend /etc/nginx/sites-enabled
+ln -s /etc/nginx/sites-available/${instancia_add}-backend /etc/nginx/sites-enabled
 EOF
 
   sleep 2

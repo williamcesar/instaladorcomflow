@@ -9,141 +9,34 @@
 #######################################
 system_create_user() {
   print_banner
-  printf "${WHITE} 💻 Agora, vamos criar o usuário para deploy...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Agora, vamos criar o usuário para a instancia...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  useradd -m -p $(openssl passwd $deploy_password) -s /bin/bash -G sudo deploy
+  useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
   usermod -aG sudo deploy
 EOF
 
   sleep 2
 }
 
-
-instalacao_firewall() {
-  print_banner
-  printf "${WHITE} 💻 Agora, vamos instalar e ativar firewall UFW...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow ssh
-ufw allow 22
-ufw allow 80
-ufw allow 443
-ufw allow 9000
-ufw --force enable
-echo "{\"iptables\": false}" > /etc/docker/daemon.json
-systemctl restart docker
-sed -i -e 's/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/g' /etc/default/ufw
-ufw reload
-wget -q -O /usr/local/bin/ufw-docker https://github.com/chaifeng/ufw-docker/raw/master/ufw-docker
-chmod +x /usr/local/bin/ufw-docker
-ufw-docker install
-systemctl restart ufw
-
-EOF
-
-  sleep 60
-}
-
-iniciar_firewall() {
-  print_banner
-  printf "${WHITE} 💻 Iniciando Firewall...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  service ufw start
-  
-EOF
-
-  sleep 2
-}
-
-parar_firewall() {
-  print_banner
-  printf "${WHITE} 💻 Parando Firewall(atenção seu servidor ficara desprotegido)...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  service ufw stop
-  
-EOF
-
-  sleep 2
-}
-
 #######################################
-# set timezone
+# clones repostories using git
 # Arguments:
 #   None
 #######################################
-system_set_timezone() {
+system_git_clone() {
   print_banner
-  printf "${WHITE} 💻 Setando timezone...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Fazendo download do código Equipechat...${GRAY_LIGHT}"
   printf "\n\n"
 
-  sleep 2
-
-  sudo su - root <<EOF
-  timedatectl set-timezone America/Sao_Paulo
-EOF
-
-  sleep 2
-}
-
-#######################################
-# unzip izing
-# Arguments:
-#   None
-#######################################
-system_unzip_izing() {
-  print_banner
-  printf "${WHITE} 💻 Fazendo unzip Kmenu...${GRAY_LIGHT}"
-  printf "\n\n"
 
   sleep 2
 
   sudo su - deploy <<EOF
-  cd /home/deploy/  
-  wget https://coresistemas.com/izing-6090.zip
-  unzip izing-6090.zip
-  chmod 775 izing.io/ -Rf
-  rm izing-6090.zip
-EOF
-
-  sleep 2
-}
-
-#######################################
-# update izing
-# Arguments:
-#   None
-#######################################
-system_update_izing() {
-  print_banner
-  printf "${WHITE} 💻 Fazendo unzip Kmenu atualizado...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - deploy <<EOF
-  cd /home/deploy/
-  wget https://coresistemas.com/update-6090.zip
-  unzip -o update-6090.zip
-  sleep 2
-  chmod 775 izing.io/ -Rf
-  rm update-6090.zip
+  git clone ${link_git} /home/deploy/${instancia_add}/
 EOF
 
   sleep 2
@@ -156,17 +49,221 @@ EOF
 #######################################
 system_update() {
   print_banner
-  printf "${WHITE} 💻 Vamos atualizar o sistema...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Vamos atualizar o sistema Equipechat...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  apt -y update && apt -y upgrade
-  apt autoremove -y
-  sudo ufw allow 443/tcp
-  sudo ufw allow 80/tcp
+  apt -y update
+  sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locales gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils
 EOF
+
+  sleep 2
+}
+
+
+
+#######################################
+# delete system
+# Arguments:
+#   None
+#######################################
+deletar_tudo() {
+  print_banner
+  printf "${WHITE} 💻 Vamos deletar o Equipechat...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+  sudo su - root <<EOF
+  docker container rm redis-${empresa_delete} --force
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-frontend
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_delete}-backend  
+  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-frontend
+  cd && rm -rf /etc/nginx/sites-available/${empresa_delete}-backend
+  
+  sleep 2
+
+  sudo su - postgres
+  dropuser ${empresa_delete}
+  dropdb ${empresa_delete}
+  exit
+EOF
+
+sleep 2
+
+sudo su - deploy <<EOF
+ rm -rf /home/deploy/${empresa_delete}
+ pm2 delete ${empresa_delete}-frontend ${empresa_delete}-backend
+ pm2 save
+EOF
+
+  sleep 2
+
+  print_banner
+  printf "${WHITE} 💻 Remoção da Instancia/Empresa ${empresa_delete} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
+
+
+  sleep 2
+
+}
+
+#######################################
+# bloquear system
+# Arguments:
+#   None
+#######################################
+configurar_bloqueio() {
+  print_banner
+  printf "${WHITE} 💻 Vamos bloquear o Equipechat...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+sudo su - deploy <<EOF
+ pm2 stop ${empresa_bloquear}-backend
+ pm2 save
+EOF
+
+  sleep 2
+
+  print_banner
+  printf "${WHITE} 💻 Bloqueio da Instancia/Empresa ${empresa_bloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+}
+
+
+#######################################
+# desbloquear system
+# Arguments:
+#   None
+#######################################
+configurar_desbloqueio() {
+  print_banner
+  printf "${WHITE} 💻 Vamos Desbloquear o Equipechat...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+
+sudo su - deploy <<EOF
+ pm2 start ${empresa_bloquear}-backend
+ pm2 save
+EOF
+
+  sleep 2
+
+  print_banner
+  printf "${WHITE} 💻 Desbloqueio da Instancia/Empresa ${empresa_desbloquear} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
+
+  sleep 2
+}
+
+#######################################
+# alter dominio system
+# Arguments:
+#   None
+#######################################
+configurar_dominio() {
+  print_banner
+  printf "${WHITE} 💻 Vamos Alterar os Dominios do Equipechat...${GRAY_LIGHT}"
+  printf "\n\n"
+
+sleep 2
+
+  sudo su - root <<EOF
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-frontend
+  cd && rm -rf /etc/nginx/sites-enabled/${empresa_dominio}-backend  
+  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-frontend
+  cd && rm -rf /etc/nginx/sites-available/${empresa_dominio}-backend
+EOF
+
+sleep 2
+
+  sudo su - deploy <<EOF
+  cd && cd /home/deploy/${empresa_dominio}/frontend
+  sed -i "1c\REACT_APP_BACKEND_URL=https://${alter_backend_url}" .env
+  cd && cd /home/deploy/${empresa_dominio}/backend
+  sed -i "2c\BACKEND_URL=https://${alter_backend_url}" .env
+  sed -i "3c\FRONTEND_URL=https://${alter_frontend_url}" .env 
+EOF
+
+sleep 2
+   
+   backend_hostname=$(echo "${alter_backend_url/https:\/\/}")
+
+ sudo su - root <<EOF
+  cat > /etc/nginx/sites-available/${empresa_dominio}-backend << 'END'
+server {
+  server_name $backend_hostname;
+  location / {
+    proxy_pass http://127.0.0.1:${alter_backend_port};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_cache_bypass \$http_upgrade;
+  }
+}
+END
+ln -s /etc/nginx/sites-available/${empresa_dominio}-backend /etc/nginx/sites-enabled
+EOF
+
+sleep 2
+
+frontend_hostname=$(echo "${alter_frontend_url/https:\/\/}")
+
+sudo su - root << EOF
+cat > /etc/nginx/sites-available/${empresa_dominio}-frontend << 'END'
+server {
+  server_name $frontend_hostname;
+  location / {
+    proxy_pass http://127.0.0.1:${alter_frontend_port};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_cache_bypass \$http_upgrade;
+  }
+}
+END
+ln -s /etc/nginx/sites-available/${empresa_dominio}-frontend /etc/nginx/sites-enabled
+EOF
+
+ sleep 2
+
+ sudo su - root <<EOF
+  service nginx restart
+EOF
+
+  sleep 2
+
+  backend_domain=$(echo "${backend_url/https:\/\/}")
+  frontend_domain=$(echo "${frontend_url/https:\/\/}")
+
+  sudo su - root <<EOF
+  certbot -m $deploy_email \
+          --nginx \
+          --agree-tos \
+          --non-interactive \
+          --domains $backend_domain,$frontend_domain
+EOF
+
+  sleep 2
+
+  print_banner
+  printf "${WHITE} 💻 Alteração de dominio da Instancia/Empresa ${empresa_dominio} realizado com sucesso ...${GRAY_LIGHT}"
+  printf "\n\n"
 
   sleep 2
 }
@@ -184,13 +281,21 @@ system_node_install() {
   sleep 2
 
   sudo su - root <<EOF
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
   apt-get install -y nodejs
+  sleep 2
+  npm install -g npm@latest
+  sleep 2
+  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  sudo apt-get update -y && sudo apt-get -y install postgresql
+  sleep 2
+  sudo timedatectl set-timezone America/Sao_Paulo
+  
 EOF
 
   sleep 2
 }
-
 #######################################
 # installs docker
 # Arguments:
@@ -204,14 +309,14 @@ system_docker_install() {
   sleep 2
 
   sudo su - root <<EOF
-  sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-  echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
+  apt install -y apt-transport-https \
+                 ca-certificates curl \
+                 software-properties-common
+
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+
   apt install -y docker-ce
 EOF
 
@@ -237,40 +342,53 @@ system_puppeteer_dependencies() {
   sleep 2
 
   sudo su - root <<EOF
-apt install -y ufw apt-transport-https ca-certificates software-properties-common curl libgbm-dev wget unzip fontconfig locales gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils python2-minimal build-essential libxshmfence-dev nginx
+  apt-get install -y libxshmfence-dev \
+                      libgbm-dev \
+                      wget \
+                      unzip \
+                      fontconfig \
+                      locales \
+                      gconf-service \
+                      libasound2 \
+                      libatk1.0-0 \
+                      libc6 \
+                      libcairo2 \
+                      libcups2 \
+                      libdbus-1-3 \
+                      libexpat1 \
+                      libfontconfig1 \
+                      libgcc1 \
+                      libgconf-2-4 \
+                      libgdk-pixbuf2.0-0 \
+                      libglib2.0-0 \
+                      libgtk-3-0 \
+                      libnspr4 \
+                      libpango-1.0-0 \
+                      libpangocairo-1.0-0 \
+                      libstdc++6 \
+                      libx11-6 \
+                      libx11-xcb1 \
+                      libxcb1 \
+                      libxcomposite1 \
+                      libxcursor1 \
+                      libxdamage1 \
+                      libxext6 \
+                      libxfixes3 \
+                      libxi6 \
+                      libxrandr2 \
+                      libxrender1 \
+                      libxss1 \
+                      libxtst6 \
+                      ca-certificates \
+                      fonts-liberation \
+                      libappindicator1 \
+                      libnss3 \
+                      lsb-release \
+                      xdg-utils
 EOF
 
   sleep 2
 }
-
-system_pm2_stop() {
-  print_banner
-  printf "${WHITE} 💻 Parando o Kmenu...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - deploy <<EOF
-  pm2 stop all
-EOF
-
-  sleep 2
-}
-
-system_pm2_start() {
-  print_banner
-  printf "${WHITE} 💻 Iniciando o Kmenu...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - deploy <<EOF
-  pm2 start all
-EOF
-
-  sleep 2
-}
-
 
 #######################################
 # installs pm2
@@ -286,8 +404,7 @@ system_pm2_install() {
 
   sudo su - root <<EOF
   npm install -g pm2
-  pm2 startup ubuntu -u deploy
-  env PATH=\$PATH:/usr/bin pm2 startup ubuntu -u deploy --hp /home/deploy
+
 EOF
 
   sleep 2
@@ -348,41 +465,8 @@ system_nginx_install() {
   sleep 2
 
   sudo su - root <<EOF
+  apt install -y nginx
   rm /etc/nginx/sites-enabled/default
-EOF
-
-  sleep 2
-}
-
-#######################################
-# install_chrome
-# Arguments:
-#   None
-#######################################
-system_set_user_mod() {
-  print_banner
-  printf "${WHITE} 💻 Vamos atualizar o sistema...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  sudo usermod -aG docker deploy
-  su - deploy
-EOF
-
-  sleep 2
-}
-
-criar_cron() {
-  print_banner
-  printf "${WHITE} 💻 Criar cron...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-(crontab -l -u deploy | grep -v "/usr/bin/node /usr/bin/pm2 restart all"; echo "0 */4 * * * /usr/bin/node /usr/bin/pm2 restart all") | crontab -u deploy -
 EOF
 
   sleep 2
@@ -421,9 +505,8 @@ system_nginx_conf() {
 
 sudo su - root << EOF
 
-cat > /etc/nginx/conf.d/izingio.conf << 'END'
+cat > /etc/nginx/conf.d/deploy.conf << 'END'
 client_max_body_size 100M;
-large_client_header_buffers 16 5120k;
 END
 
 EOF
@@ -438,14 +521,13 @@ EOF
 #######################################
 system_certbot_setup() {
   print_banner
-  printf "${WHITE} 💻 Configurando certbot...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Configurando certbot, Já estamos perto do fim...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   backend_domain=$(echo "${backend_url/https:\/\/}")
   frontend_domain=$(echo "${frontend_url/https:\/\/}")
-  admin_domain=$(echo "${admin_url/https:\/\/}")
 
   sudo su - root <<EOF
   certbot -m $deploy_email \
@@ -453,170 +535,8 @@ system_certbot_setup() {
           --agree-tos \
           --non-interactive \
           --domains $backend_domain,$frontend_domain
+
 EOF
-
-  sleep 2
-}
-
-#######################################
-# reboot
-# Arguments:
-#   None
-#######################################
-system_reboot() {
-  print_banner
-  printf "${WHITE} 💻 Reboot...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  reboot
-EOF
-
-  sleep 2
-}
-
-#######################################
-# creates docker db
-# Arguments:
-#   None
-#######################################
-system_docker_start() {
-  print_banner
-  printf "${WHITE} 💻 Iniciando container docker...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  docker stop $(docker ps -q)
-  docker container start postgresql
-  docker container start redis-izing
-  docker container start rabbitmq
-  docker exec -u root postgresql bash -c "chown -R postgres:postgres /var/lib/postgresql/data"
-EOF
-
-  sleep 2
-}
-
-#######################################
-# creates docker db
-# Arguments:
-#   None
-#######################################
-system_docker_restart() {
-  print_banner
-  printf "${WHITE} 💻 Iniciando container docker...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  docker container restart redis-izing
-  docker container restart rabbitmq
-  docker container restart portainer
-  docker container restart postgresql
-  docker exec -u root postgresql bash -c "chown -R postgres:postgres /var/lib/postgresql/data"
-EOF
-
-  sleep 60
-}
-
-#######################################
-# unzip izing
-# Arguments:
-#   None
-#######################################
-script_adicionais() {
-  print_banner
-  printf "${WHITE} 💻 esta quase terminando...${GRAY_LIGHT}"
-  printf "\n\n"
-
-  sleep 2
-
-  sudo su - root <<EOF
-  cd /home/deploy/  
-  wget https://coresistemas.com/adicional-6090.sh
-  sh adicional-6090.sh
-  rm adicional-6090.sh
-EOF
-
-  sleep 2
-}
-
-
-
-#######################################
-# creates final message
-# Arguments:
-#   None
-#######################################
-system_success() {
-
-echo $deploy_password > /root/senhadeploy
-
-  print_banner
-  printf "${GREEN} 💻 Instalação concluída com Sucesso...${NC}"
-  printf "${CYAN_LIGHT}";
-  printf "\n\n"
-  printf "Usuário painel SaaS: super@izing.io"
-  printf "\n"
-  printf "Senha: 123456"
-  printf "\n"
-  printf "Usuário: admin@izing.io"
-  printf "\n"
-  printf "Senha: 123456"
-  printf "\n"
-  printf "URL front: https://$frontend_domain"
-  printf "\n"
-  printf "URL back: https://$backend_domain"
-  printf "\n"
-  printf "Acesso ao Portainer: http://$frontend_domain:9000"
-  printf "\n"
-  printf "Senha Usuario deploy: $deploy_password"
-  printf "\n"
-  printf "Usuario do Banco de Dados: izing"
-  printf "\n"
-  printf "Nome do Banco de Dados: postgres"
-  printf "\n"
-  printf "Senha do Banco de Dados: $pg_pass"
-  printf "\n"
-  printf "Senha do Redis: $redis_pass"
-  printf "\n"
-  printf "Senha do Rabbit: $rabbit_pass"
-  printf "\n"
-  printf "${NC}";
-
-  sleep 2
-}
-
-system_success2() {
-  print_banner
-  printf "${GREEN} 💻 Processo concluido acessar com aba anonima e verificar se numero versão alterou...${NC}"
-  printf "\n\n"
-  printf "${GREEN} Caso não tenha alterado veja motivos abaixo:${NC}"
-  printf "\n\n"
-  printf "${GREEN} Não tenha atualização...${NC}"
-  printf "\n\n"
-  printf "${GREEN} Sua senha para atualizar esta vencida...${NC}"
-  printf "\n\n"
-  printf "${GREEN} Você digitou usuario ou senha errado${NC}"
-  printf "\n\n"
-  printf "${GREEN} Se tiver duvidas chame no whatsapp${NC}"
-  printf "\n\n"
-  printf "${NC}";
-
-  sleep 2
-}
-
-system_successqrcode() {
-  print_banner
-  printf "${GREEN} 💻 Processo concluido você terá ler novamente QRCODE...${NC}"
-  printf "\n\n"
-  printf "${GREEN} Se tiver duvidas chame no whatsapp${NC}"
-  printf "\n\n"
-  printf "${NC}";
 
   sleep 2
 }
