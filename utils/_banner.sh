@@ -21,16 +21,10 @@ print_banner() {
 
   printf "\n\n"
 
-printf "${YELLOW}";
-
-
-printf ${YELLOW}"   CRIADO POR WILLIAM ALMEIDA - (11) 99023-9898 \n";
-
- 
-
-printf "${YELLOW}";
-  
-  printf "${NC}";
+  printf "${GREEN}";
+  printf " Criado por William Alemeida - Waboot \n";
 
   printf "\n"
+
+  printf " www.waboot.com.br \n";
 }
