@@ -23,8 +23,6 @@ print_banner() {
 
   printf "${GREEN}";
   printf " Criado por William Alemeida - Waboot \n";
-
-  printf "\n"
-
+  printf "${YELLOW}";
   printf " www.waboot.com.br \n";
 }

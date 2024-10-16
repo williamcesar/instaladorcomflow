@@ -201,8 +201,9 @@ software_dominio() {
 inquiry_options() {
   
   print_banner
-  printf "${WHITE} 💻 Bem vindo(a) ao Gerenciador WABOOT, Selecione abaixo a proxima ação!${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Bem vindo(a) ao Instalador do WABOOT, Selecione abaixo a proxima ação!${GRAY_LIGHT}"
   printf "\n\n"
+  printf "${GREEN}";
   printf "   [0] Instalar whaticket\n"
   printf "   [1] Atualizar whaticket\n"
   printf "   [2] Deletar Whaticket\n"
