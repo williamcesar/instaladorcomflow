@@ -17,7 +17,6 @@ backend_redis_create() {
   usermod -aG docker deploy
   docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
   
-  sleep 2
   sudo su - postgres
   createdb ${instancia_add};
   psql
@@ -53,31 +52,52 @@ backend_set_env() {
   frontend_url=${frontend_url%%/*}
   frontend_url=https://$frontend_url
 
+  # Gera JWT_SECRET
+  JWT_SECRET=$(openssl rand -hex 32)
+
+  # Gera JWT_REFRESH_SECRET
+  JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+
 sudo su - deploy << EOF
   cat <<[-]EOF > /home/deploy/${instancia_add}/backend/.env
-NODE_ENV=
+NODE_ENV=production
 BACKEND_URL=${backend_url}
 FRONTEND_URL=${frontend_url}
 PROXY_PORT=443
 PORT=${backend_port}
 
-DB_DIALECT=postgres
 DB_HOST=localhost
-DB_PORT=5432
+DB_DIALECT=postgres
 DB_USER=${instancia_add}
 DB_PASS=${mysql_root_password}
 DB_NAME=${instancia_add}
+DB_PORT=5432
 
-JWT_SECRET=${jwt_secret}
-JWT_REFRESH_SECRET=${jwt_refresh_secret}
+TIMEOUT_TO_IMPORT_MESSAGE=999
+FLUSH_REDIS_ON_START=false
+DEBUG_TRACE=false
+CHATBOT_RESTRICT_NUMBER=
+BROWSER_CLIENT=AutoAtende  
+BROWSER_NAME=Chrome  
+BROWSER_VERSION=10.0
 
 REDIS_URI=redis://:${mysql_root_password}@127.0.0.1:${redis_port}
 REDIS_OPT_LIMITER_MAX=1
-REGIS_OPT_LIMITER_DURATION=3000
+REDIS_OPT_LIMITER_DURATION=3000
+REDIS_HOST=127.0.0.1
+REDIS_PORT=${redis_port}
+REDIS_PASSWORD=${mysql_root_password}
 
 USER_LIMIT=${max_user}
 CONNECTIONS_LIMIT=${max_whats}
-CLOSED_SEND_BY_ME=true
+
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=
+
+JWT_SECRET=${JWT_SECRET}
+JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+
+TOKEN_GITHUB=
 
 [-]EOF
 EOF
@@ -99,7 +119,19 @@ backend_node_dependencies() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
-  npm install --force
+  
+  printf "${CYAN_LIGHT}Limpando cache do npm...${NC}\n"
+  npm cache clean --force
+  
+  printf "${CYAN_LIGHT}Iniciando instalação das dependências...${NC}\n"
+  npm install --verbose 2>&1 | tee npm_install.log
+  
+  if [ $? -eq 0 ]; then
+    printf "${GREEN}Instalação das dependências concluída com sucesso!${NC}\n"
+  else
+    printf "${RED}Erro na instalação das dependências. Verifique o arquivo npm_install.log para mais detalhes.${NC}\n"
+    exit 1
+  fi
 EOF
 
   sleep 2
@@ -120,6 +152,7 @@ backend_node_build() {
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
   npm run build
+  cp .env dist/
 EOF
 
   sleep 2
@@ -139,18 +172,19 @@ backend_update() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${empresa_atualizar}
-  pm2 stop ${empresa_atualizar}-backend
+  git reset --hard
   git pull
-  cd /home/deploy/${empresa_atualizar}/backend
+  pm2 stop ${empresa_atualizar}-backend
+  pm2 del ${empresa_atualizar}-backend
+  cd backend
+  rm -rf node_modules
   npm install
-  npm update -f
-  npm install @types/fs-extra
   rm -rf dist 
   npm run build
+  cp .env dist/
   npx sequelize db:migrate
-  npx sequelize db:migrate
-  npx sequelize db:seed
-  pm2 start ${empresa_atualizar}-backend
+  npx sequelize db:seed:all
+  NODE_ENV=production pm2 start dist/server.js --name ${empresa_atualizar}-backend --update-env --node-args="--max-old-space-size=4096"
   pm2 save 
 EOF
 
@@ -212,7 +246,13 @@ backend_start_pm2() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
-  pm2 start dist/server.js --name ${instancia_add}-backend
+  NODE_ENV=production pm2 start dist/server.js --name ${instancia_add}-backend  --update-env --node-args="--max-old-space-size=4096"
+
+EOF
+
+  sudo su - root <<EOF
+   pm2 startup
+  sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u deploy --hp /home/deploy
 EOF
 
   sleep 2
