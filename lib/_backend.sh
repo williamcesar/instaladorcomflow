@@ -15,15 +15,16 @@ backend_redis_create() {
 
   sudo su - root <<EOF
   usermod -aG docker deploy
-  docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
-  
-  sudo su - postgres
-  createdb ${instancia_add};
-  psql
-  CREATE USER ${instancia_add} SUPERUSER INHERIT CREATEDB CREATEROLE;
-  ALTER USER ${instancia_add} PASSWORD '${mysql_root_password}';
-  \q
-  exit
+  docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${redis_pass}
+
+  sleep 2
+  sudo su - postgres <<EOF
+    createdb ${instancia_add};
+    psql
+    CREATE USER ${instancia_add} SUPERUSER INHERIT CREATEDB CREATEROLE;
+    ALTER USER ${instancia_add} PASSWORD '${db_pass}';
+    \q
+    exit
 EOF
 
 sleep 2
@@ -52,15 +53,9 @@ backend_set_env() {
   frontend_url=${frontend_url%%/*}
   frontend_url=https://$frontend_url
 
-  # Gera JWT_SECRET
-  JWT_SECRET=$(openssl rand -hex 32)
-
-  # Gera JWT_REFRESH_SECRET
-  JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-
 sudo su - deploy << EOF
   cat <<[-]EOF > /home/deploy/${instancia_add}/backend/.env
-NODE_ENV=production
+NODE_ENV=
 BACKEND_URL=${backend_url}
 FRONTEND_URL=${frontend_url}
 PROXY_PORT=443
@@ -68,36 +63,30 @@ PORT=${backend_port}
 
 DB_HOST=localhost
 DB_DIALECT=postgres
-DB_USER=${instancia_add}
-DB_PASS=${mysql_root_password}
-DB_NAME=${instancia_add}
 DB_PORT=5432
+DB_USER=${instancia_add}
+DB_PASS=${db_pass}
+DB_NAME=${instancia_add}
 
-TIMEOUT_TO_IMPORT_MESSAGE=999
-FLUSH_REDIS_ON_START=false
-DEBUG_TRACE=false
-CHATBOT_RESTRICT_NUMBER=
-BROWSER_CLIENT=AutoAtende  
-BROWSER_NAME=Chrome  
-BROWSER_VERSION=10.0
+JWT_SECRET=${jwt_secret}
+JWT_REFRESH_SECRET=${jwt_refresh_secret}
 
-REDIS_URI=redis://:${mysql_root_password}@127.0.0.1:${redis_port}
+REDIS_URI=redis://:${redis_pass}@127.0.0.1:${redis_port}
 REDIS_OPT_LIMITER_MAX=1
-REDIS_OPT_LIMITER_DURATION=3000
-REDIS_HOST=127.0.0.1
-REDIS_PORT=${redis_port}
-REDIS_PASSWORD=${mysql_root_password}
+REGIS_OPT_LIMITER_DURATION=3000
 
 USER_LIMIT=${max_user}
 CONNECTIONS_LIMIT=${max_whats}
+CLOSED_SEND_BY_ME=true
 
-FACEBOOK_APP_ID=
-FACEBOOK_APP_SECRET=
+# GERENCIANET_SANDBOX=false
+# GERENCIANET_CLIENT_ID=Client_Id_Gerencianet
+# GERENCIANET_CLIENT_SECRET=Client_Secret_Gerencianet
+# GERENCIANET_PIX_CERT=certificado-Gerencianet
+# GERENCIANET_PIX_KEY=chave pix gerencianet
 
-JWT_SECRET=${JWT_SECRET}
-JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-
-TOKEN_GITHUB=
+# para usar GERENCIANET Em backend\certs
+# Salvar o certificado no formato .p12
 
 [-]EOF
 EOF
@@ -119,19 +108,8 @@ backend_node_dependencies() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
-  
-  printf "${CYAN_LIGHT}Limpando cache do npm...${NC}\n"
-  npm cache clean --force
-  
-  printf "${CYAN_LIGHT}Iniciando instalação das dependências...${NC}\n"
-  npm install --verbose 2>&1 | tee npm_install.log
-  
-  if [ $? -eq 0 ]; then
-    printf "${GREEN}Instalação das dependências concluída com sucesso!${NC}\n"
-  else
-    printf "${RED}Erro na instalação das dependências. Verifique o arquivo npm_install.log para mais detalhes.${NC}\n"
-    exit 1
-  fi
+  npm install
+  npm install @whiskeysockets/baileys@6.6.0
 EOF
 
   sleep 2
@@ -152,7 +130,6 @@ backend_node_build() {
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
   npm run build
-  cp .env dist/
 EOF
 
   sleep 2
@@ -172,19 +149,18 @@ backend_update() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${empresa_atualizar}
-  git reset --hard
-  git pull
   pm2 stop ${empresa_atualizar}-backend
-  pm2 del ${empresa_atualizar}-backend
-  cd backend
-  rm -rf node_modules
-  npm install
+  git pull
+  cd /home/deploy/${empresa_atualizar}/backend
+  npm install --force
+  npm update -f
+  npm install @types/fs-extra
   rm -rf dist 
   npm run build
-  cp .env dist/
   npx sequelize db:migrate
-  npx sequelize db:seed:all
-  NODE_ENV=production pm2 start dist/server.js --name ${empresa_atualizar}-backend --update-env --node-args="--max-old-space-size=4096"
+  npx sequelize db:migrate
+  npx sequelize db:seed
+  pm2 start ${empresa_atualizar}-backend
   pm2 save 
 EOF
 
@@ -205,6 +181,7 @@ backend_db_migrate() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
+  npx sequelize db:migrate
   npx sequelize db:migrate
 EOF
 
@@ -244,15 +221,10 @@ backend_start_pm2() {
 
   sleep 2
 
-  sudo su - deploy <<EOF
-  cd /home/deploy/${instancia_add}/backend
-  NODE_ENV=production pm2 start dist/server.js --name ${instancia_add}-backend  --update-env --node-args="--max-old-space-size=4096"
-
-EOF
-
   sudo su - root <<EOF
-   pm2 startup
-  sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u deploy --hp /home/deploy
+  cd /home/deploy/${instancia_add}/backend
+  pm2 start dist/server.js --name ${instancia_add}-backend
+  pm2 save --force
 EOF
 
   sleep 2

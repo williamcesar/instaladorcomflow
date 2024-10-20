@@ -11,7 +11,7 @@
 #   CYAN_LIGHT
 #   RED
 #   GREEN
-#   YELLOW
+#   YELLOWYELLOW
 # Arguments:
 #   None
 #######################################
@@ -21,13 +21,17 @@ print_banner() {
 
   printf "\n\n"
 
-printf "${BLUE}";
-
-
-printf ${BLUE}" CRIADO POR WILLIAM ALMEIDA \n";
-
-                                                                                                                                                         
-  printf "            \033[1;37m        WWW.WABOOT.COM.BR\n";
+  printf "${GREEN}";
+  printf "                                                     ▄▄█▀▀▀▀▀▀▀█▄▄  \n";
+  printf "                                                   ${GREEN}▄█▀${NC}   ${WHITE}▄▄${NC}      ${GREEN}▀█▄\n";
+  printf "                                                   ${GREEN}█${NC}    ${WHITE}███${NC}         ${GREEN}█\n";
+  printf "                                                   ${GREEN}█${NC}    ${WHITE}██▄         ${GREEN}█${NC}\n";
+  printf "                                                   ${GREEN}█${NC}     ${WHITE}▀██▄${NC} ${WHITE}██${NC}    ${GREEN}█\n";
+  printf "                                                   ${GREEN}█${NC}       ${WHITE}▀███▀${NC}    ${GREEN}█\n";
+  printf "                                                   ${GREEN}▀█▄           ▄█▀\n";
+  printf "                                                    ▄█    ▄▄▄▄█▀▀  \n";
+  printf "                                                    █  ▄█▀        \n";
+  printf "                                                    ▀▀▀▀          \n";
   printf "${NC}";
 
   printf "\n"
